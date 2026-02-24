@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZPL Webhook Stream</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Highlight.js for JSON syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar: List of incoming requests -->
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div class="header-title">
+                    <div class="pulse-indicator"></div>
+                    <h1>Live Webhooks</h1>
+                </div>
+                <div class="webhook-url">
+                    <span class="url-label">Endpoint:</span>
+                    <code id="endpoint-url">.../api/event/zpl-webhook</code>
+                    <button id="copy-btn" class="icon-btn" title="Copy URL">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="events-list" id="events-list">
+                <!-- Events will be injected here via JS -->
+                <div class="empty-state" id="empty-state">
+                    <div class="loader"></div>
+                    <p>Waiting for incoming data...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Detailed view of selected request -->
+        <main class="main-content">
+            <div class="detail-view" id="detail-view">
+                <div class="no-selection" id="no-selection">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    <h2>Select a webhook to view details</h2>
+                    <p>Incoming `POST` requests will appear in the sidebar.</p>
+                </div>
+
+                <div class="event-details hide" id="event-details">
+                    <header class="detail-header">
+                        <div class="title-group">
+                            <span class="method-badge">POST</span>
+                            <h2 id="detail-time">Feb 23, 2026 - 8:22 PM</h2>
+                        </div>
+                        <span class="id-badge" id="detail-id">ID: 1708741355000</span>
+                    </header>
+
+                    <div class="detail-body">
+                        <!-- Key Information (Extracted easily) -->
+                        <div class="summary-cards">
+                            <div class="card">
+                                <h3>Dealer ID</h3>
+                                <div class="card-value" id="card-dealer">-</div>
+                            </div>
+                            <div class="card">
+                                <h3>DMS Account</h3>
+                                <div class="card-value" id="card-dms">-</div>
+                            </div>
+                            <div class="card">
+                                <h3>Filename</h3>
+                                <div class="card-value" id="card-filename" style="font-size: 0.9rem; word-break: break-all;">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Full JSON Payload -->
+                        <div class="payload-section">
+                            <div class="section-header">
+                                <h3>Full JSON Payload</h3>
+                            </div>
+                            <div class="code-container">
+                                <pre><code class="language-json" id="json-viewer">{}</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Raw ZPL Preview (if available) -->
+                        <div class="payload-section zpl-section" id="zpl-section">
+                            <div class="section-header">
+                                <h3>Extracted ZPL Data</h3>
+                            </div>
+                            <div class="code-container">
+                                <pre><code class="language-plaintext" id="zpl-viewer"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">Copied to clipboard!</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
