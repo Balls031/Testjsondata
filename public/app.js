@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailId = document.getElementById('detail-id');
     const cardDealer = document.getElementById('card-dealer');
     const cardDms = document.getElementById('card-dms');
-    const cardFilename = document.getElementById('card-filename');
+    const cardTemplate = document.getElementById('card-template');
+    const cardStore = document.getElementById('card-store');
     const jsonViewer = document.getElementById('json-viewer');
     const zplViewer = document.getElementById('zpl-viewer');
     const zplSection = document.getElementById('zpl-section');
@@ -41,13 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ------------------------------------------------------------------
+    // Base64 Decode Helper
+    // ------------------------------------------------------------------
+    function decodeBase64(b64String) {
+        try {
+            return atob(b64String);
+        } catch (e) {
+            console.error('Base64 decode failed:', e);
+            return '[Unable to decode ZPL data]';
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Server-Sent Events (SSE) Connection
     // ------------------------------------------------------------------
     function setupSSE() {
         console.log('Connecting to SSE stream...');
         const eventSource = new EventSource('/api/stream');
 
-        // Receives the full history on initial connection
         eventSource.addEventListener('initial_data', (e) => {
             const data = JSON.parse(e.data);
             console.log('Received initial history:', data);
@@ -55,28 +67,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderEventList();
         });
 
-        // Receives a single new event as it happens
         eventSource.addEventListener('new_webhook', (e) => {
             const newEvent = JSON.parse(e.data);
             console.log('Received new event:', newEvent);
-            // Add to the front of the array
             webhooks.unshift(newEvent);
-
-            // Limit array size locally as well
             if (webhooks.length > 50) webhooks.pop();
-
             renderEventList();
         });
 
         eventSource.onerror = (error) => {
             console.error('SSE Error:', error);
-            // Browser will automatically attempt to reconnect
         };
     }
 
-    // Start SSE
     setupSSE();
-
 
     // ------------------------------------------------------------------
     // Rendering Logic
@@ -95,17 +99,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         emptyState.style.display = 'none';
 
-        // Clear existing items but keep the empty state div
         const items = eventsList.querySelectorAll('.event-item');
         items.forEach(item => item.remove());
 
-        // Render each webhook
         webhooks.forEach(item => {
             const isSelected = item.id === stateActiveEventId;
 
-            // Extract info if it exists in body
-            const dealer = item.body?.dealerId || 'Unknown Dealer';
-            const file = item.body?.filename || 'Unknown File';
+            // Extract info from the new payload format
+            const dealer = item.body?.dealer_id || item.body?.dealerId || 'Unknown';
+            const store = item.body?.store_name || 'Unknown Store';
+            const template = item.body?.template_name || '';
 
             const itemEl = document.createElement('div');
             itemEl.className = `event-item ${isSelected ? 'active' : ''}`;
@@ -116,8 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="method-badge">POST</span>
                     <span class="event-time">${formatTime(item.timestamp)}</span>
                 </div>
-                <div class="event-title">Dealer: ${dealer}</div>
-                <div class="event-subtitle">${file}</div>
+                <div class="event-title">${store} — Dealer: ${dealer}</div>
+                <div class="event-subtitle">Template: ${template || 'N/A'}</div>
             `;
 
             itemEl.addEventListener('click', () => {
@@ -131,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function selectEvent(id) {
         stateActiveEventId = id;
 
-        // Update list UI
         document.querySelectorAll('.event-item').forEach(el => {
             if (el.dataset.id === id) {
                 el.classList.add('active');
@@ -143,30 +145,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedEvent = webhooks.find(w => w.id === id);
         if (!selectedEvent) return;
 
-        // Populate Detail View
         noSelectionView.classList.add('hide');
         eventDetailsView.classList.remove('hide');
 
         detailTime.textContent = formatTime(selectedEvent.timestamp);
         detailId.textContent = `ID: ${selectedEvent.id}`;
 
-        // Populate Cards
-        cardDealer.textContent = selectedEvent.body?.dealerId || '-';
-        cardDms.textContent = selectedEvent.body?.dmsAccountId || '-';
-        cardFilename.textContent = selectedEvent.body?.filename || '-';
+        // Populate Cards — support both old and new field names
+        cardDealer.textContent = selectedEvent.body?.dealer_id || selectedEvent.body?.dealerId || '-';
+        cardDms.textContent = selectedEvent.body?.dms_account_id || selectedEvent.body?.dmsAccountId || '-';
+        cardTemplate.textContent = selectedEvent.body?.template_name
+            ? `${selectedEvent.body.template_name} (${selectedEvent.body.fingerprint || ''})`
+            : '-';
+        cardStore.textContent = selectedEvent.body?.store_name
+            ? `${selectedEvent.body.store_name} :${selectedEvent.body.store_port || ''}`
+            : '-';
 
-        // Handle JSON highlighting
-        const fullJsonString = JSON.stringify(selectedEvent, null, 2);
+        // Build a display copy of the payload without the huge base64 blob
+        const displayPayload = JSON.parse(JSON.stringify(selectedEvent));
+        if (displayPayload.body?.zpl_data) {
+            displayPayload.body.zpl_data = `[Base64 — ${displayPayload.body.zpl_data.length} chars — see decoded ZPL below]`;
+        }
+
+        const fullJsonString = JSON.stringify(displayPayload, null, 2);
         jsonViewer.textContent = fullJsonString;
-
-        // Clear previous highlighting classes
         jsonViewer.removeAttribute('data-highlighted');
         hljs.highlightElement(jsonViewer);
 
-        // Handle raw ZPL Preview if it exists
-        if (selectedEvent.body?.rawZpl) {
+        // Handle raw ZPL Preview — decode from Base64
+        const zplB64 = selectedEvent.body?.zpl_data;
+        const rawZpl = selectedEvent.body?.rawZpl;
+
+        if (zplB64) {
             zplSection.classList.remove('hide');
-            zplViewer.textContent = selectedEvent.body.rawZpl;
+            zplViewer.textContent = decodeBase64(zplB64);
+        } else if (rawZpl) {
+            zplSection.classList.remove('hide');
+            zplViewer.textContent = rawZpl;
         } else {
             zplSection.classList.add('hide');
             zplViewer.textContent = '';
