@@ -48,20 +48,20 @@
                 <div class="no-selection" id="no-selection">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                     <h2>Select a webhook to view details</h2>
-                    <p>Incoming `POST` requests will appear in the sidebar.</p>
+                    <p>Incoming <code>POST</code> requests will appear in the sidebar.</p>
                 </div>
 
                 <div class="event-details hide" id="event-details">
                     <header class="detail-header">
                         <div class="title-group">
                             <span class="method-badge">POST</span>
-                            <h2 id="detail-time">Feb 23, 2026 - 8:22 PM</h2>
+                            <h2 id="detail-time">—</h2>
                         </div>
-                        <span class="id-badge" id="detail-id">ID: 1708741355000</span>
+                        <span class="id-badge" id="detail-id">ID: —</span>
                     </header>
 
                     <div class="detail-body">
-                        <!-- Key Information (Extracted easily) -->
+                        <!-- Key Information Cards -->
                         <div class="summary-cards">
                             <div class="card">
                                 <h3>Dealer ID</h3>
@@ -72,8 +72,12 @@
                                 <div class="card-value" id="card-dms">-</div>
                             </div>
                             <div class="card">
-                                <h3>Filename</h3>
-                                <div class="card-value" id="card-filename" style="font-size: 0.9rem; word-break: break-all;">-</div>
+                                <h3>Template</h3>
+                                <div class="card-value" id="card-template" style="font-size: 1rem;">-</div>
+                            </div>
+                            <div class="card">
+                                <h3>Store</h3>
+                                <div class="card-value" id="card-store" style="font-size: 1rem;">-</div>
                             </div>
                         </div>
 
@@ -87,10 +91,10 @@
                             </div>
                         </div>
 
-                        <!-- Raw ZPL Preview (if available) -->
-                        <div class="payload-section zpl-section" id="zpl-section">
+                        <!-- Decoded ZPL Preview -->
+                        <div class="payload-section zpl-section hide" id="zpl-section">
                             <div class="section-header">
-                                <h3>Extracted ZPL Data</h3>
+                                <h3>Decoded ZPL Data</h3>
                             </div>
                             <div class="code-container">
                                 <pre><code class="language-plaintext" id="zpl-viewer"></code></pre>
