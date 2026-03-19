@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!decodedZpl) return;
 
             // Generate Labelary API URL
-            const labelaryUrl = `http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/${encodeURIComponent(decodedZpl)}`;
+            const labelaryUrl = `http://api.labelary.com/v1/printers/8dpmm/labels/4x2/0/${encodeURIComponent(decodedZpl)}`;
 
             const labelSection = document.createElement('div');
             labelSection.className = 'payload-section zpl-section';
