@@ -72,12 +72,12 @@
                                 <div class="card-value" id="card-dms">-</div>
                             </div>
                             <div class="card">
-                                <h3>Template</h3>
-                                <div class="card-value" id="card-template" style="font-size: 1rem;">-</div>
-                            </div>
-                            <div class="card">
                                 <h3>Store</h3>
                                 <div class="card-value" id="card-store" style="font-size: 1rem;">-</div>
+                            </div>
+                            <div class="card">
+                                <h3>Labels Count</h3>
+                                <div class="card-value" id="card-count" style="font-size: 1.5rem;">0</div>
                             </div>
                         </div>
 
@@ -91,15 +91,8 @@
                             </div>
                         </div>
 
-                        <!-- Decoded ZPL Preview -->
-                        <div class="payload-section zpl-section hide" id="zpl-section">
-                            <div class="section-header">
-                                <h3>Decoded ZPL Data</h3>
-                            </div>
-                            <div class="code-container">
-                                <pre><code class="language-plaintext" id="zpl-viewer"></code></pre>
-                            </div>
-                        </div>
+                        <!-- Dynamic Labels Container (Holds ZPL and Image Previews) -->
+                        <div id="labels-container"></div>
                     </div>
                 </div>
             </div>

@@ -105,10 +105,17 @@ document.addEventListener('DOMContentLoaded', () => {
         webhooks.forEach(item => {
             const isSelected = item.id === stateActiveEventId;
 
-            // Extract info from the new payload format
-            const dealer = item.body?.dealer_id || item.body?.dealerId || 'Unknown';
-            const store = item.body?.store_name || 'Unknown Store';
-            const template = item.body?.template_name || '';
+            // Extract info from either the new batched format or the old format
+            const labelsArray = Array.isArray(item.body?.labels) ? item.body.labels : [item.body || {}];
+            const firstLabel = labelsArray[0] || {};
+            
+            const dealer = firstLabel.dealer_id || firstLabel.dealerId || 'Unknown';
+            const store = firstLabel.store_name || 'Unknown Store';
+            let template = firstLabel.template_name || 'Unknown';
+            
+            if (labelsArray.length > 1) {
+                template = `${template} (+${labelsArray.length - 1} more)`;
+            }
 
             const itemEl = document.createElement('div');
             itemEl.className = `event-item ${isSelected ? 'active' : ''}`;
@@ -120,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="event-time">${formatTime(item.timestamp)}</span>
                 </div>
                 <div class="event-title">${store} — Dealer: ${dealer}</div>
-                <div class="event-subtitle">Template: ${template || 'N/A'}</div>
+                <div class="event-subtitle">Template: ${template}</div>
             `;
 
             itemEl.addEventListener('click', () => {
@@ -151,20 +158,28 @@ document.addEventListener('DOMContentLoaded', () => {
         detailTime.textContent = formatTime(selectedEvent.timestamp);
         detailId.textContent = `ID: ${selectedEvent.id}`;
 
-        // Populate Cards — support both old and new field names
-        cardDealer.textContent = selectedEvent.body?.dealer_id || selectedEvent.body?.dealerId || '-';
-        cardDms.textContent = selectedEvent.body?.dms_account_id || selectedEvent.body?.dmsAccountId || '-';
-        cardTemplate.textContent = selectedEvent.body?.template_name
-            ? `${selectedEvent.body.template_name} (${selectedEvent.body.fingerprint || ''})`
+        // Support both old and new field names (Batched arrays or single payload)
+        const labelsArray = Array.isArray(selectedEvent.body?.labels) ? selectedEvent.body.labels : [selectedEvent.body || {}];
+        const firstLabel = labelsArray[0] || {};
+
+        document.getElementById('card-dealer').textContent = firstLabel.dealer_id || firstLabel.dealerId || '-';
+        document.getElementById('card-dms').textContent = firstLabel.dms_account_id || firstLabel.dmsAccountId || '-';
+        document.getElementById('card-store').textContent = firstLabel.store_name
+            ? `${firstLabel.store_name} :${firstLabel.store_port || ''}`
             : '-';
-        cardStore.textContent = selectedEvent.body?.store_name
-            ? `${selectedEvent.body.store_name} :${selectedEvent.body.store_port || ''}`
-            : '-';
+        
+        // Update the new Labels Count card
+        document.getElementById('card-count').textContent = labelsArray.length;
 
         // Build a display copy of the payload without the huge base64 blob
         const displayPayload = JSON.parse(JSON.stringify(selectedEvent));
-        if (displayPayload.body?.zpl_data) {
-            displayPayload.body.zpl_data = `[Base64 — ${displayPayload.body.zpl_data.length} chars — see decoded ZPL below]`;
+        
+        if (Array.isArray(displayPayload.body?.labels)) {
+            displayPayload.body.labels.forEach(l => {
+                if (l.zpl_data) l.zpl_data = `[Base64 — ${l.zpl_data.length} chars]`;
+            });
+        } else if (displayPayload.body?.zpl_data) {
+            displayPayload.body.zpl_data = `[Base64 — ${displayPayload.body.zpl_data.length} chars]`;
         }
 
         const fullJsonString = JSON.stringify(displayPayload, null, 2);
@@ -172,19 +187,50 @@ document.addEventListener('DOMContentLoaded', () => {
         jsonViewer.removeAttribute('data-highlighted');
         hljs.highlightElement(jsonViewer);
 
-        // Handle raw ZPL Preview — decode from Base64
-        const zplB64 = selectedEvent.body?.zpl_data;
-        const rawZpl = selectedEvent.body?.rawZpl;
+        // Render dynamic ZPL blocks and Labelary previews
+        const labelsContainer = document.getElementById('labels-container');
+        labelsContainer.innerHTML = ''; // clear previous
 
-        if (zplB64) {
-            zplSection.classList.remove('hide');
-            zplViewer.textContent = decodeBase64(zplB64);
-        } else if (rawZpl) {
-            zplSection.classList.remove('hide');
-            zplViewer.textContent = rawZpl;
-        } else {
-            zplSection.classList.add('hide');
-            zplViewer.textContent = '';
-        }
+        labelsArray.forEach((lbl, index) => {
+            const zplB64 = lbl.zpl_data;
+            const rawZpl = lbl.rawZpl;
+            let decodedZpl = '';
+
+            if (zplB64) {
+                decodedZpl = decodeBase64(zplB64);
+            } else if (rawZpl) {
+                decodedZpl = rawZpl;
+            }
+
+            if (!decodedZpl) return;
+
+            // Generate Labelary API URL
+            const labelaryUrl = `http://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/${encodeURIComponent(decodedZpl)}`;
+
+            const labelSection = document.createElement('div');
+            labelSection.className = 'payload-section zpl-section';
+            
+            const templateHtml = lbl.template_name 
+                ? `<span style="margin-left: 1rem; font-size: 0.9rem; color: var(--text-muted);">Template: ${lbl.template_name} (${lbl.fingerprint || ''})</span>` 
+                : '';
+
+            labelSection.innerHTML = `
+                <div class="section-header">
+                    <h3>Label ${index + 1} Preview ${templateHtml}</h3>
+                </div>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+                    <div style="flex: 1; min-width: 300px; background: white; padding: 1rem; border-radius: 6px; box-shadow: inset 0 0 0 1px #e1e4e8; text-align: center;">
+                        <img src="${labelaryUrl}" alt="Labelary Preview" style="max-width: 100%; height: auto; border: 1px solid #ccc;" onerror="this.src=''; this.alt='Labelary preview failed to load (ZPL might be too large for GET request)'">
+                    </div>
+                </div>
+
+                <div class="code-container">
+                    <pre><code class="language-plaintext">${decodedZpl}</code></pre>
+                </div>
+            `;
+
+            labelsContainer.appendChild(labelSection);
+        });
     }
 });

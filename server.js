@@ -28,36 +28,29 @@ let sseClients = [];
 app.post('/api/event/zpl-webhook', (req, res) => {
     const timestamp = new Date().toISOString();
 
-    // Check if the payload is a batch of labels
-    const items = Array.isArray(req.body.labels) ? req.body.labels : [req.body];
+    const newWebhook = {
+        id: Date.now().toString(),
+        timestamp: timestamp,
+        method: req.method,
+        headers: req.headers,
+        body: req.body,
+        query: req.query
+    };
 
-    items.forEach((itemBody, index) => {
-        // Use index to ensure unique IDs if they arrive at the exact same millisecond
-        const idSuffix = items.length > 1 ? `-${index}` : '';
-        const newWebhook = {
-            id: Date.now().toString() + idSuffix,
-            timestamp: timestamp,
-            method: req.method,
-            headers: req.headers,
-            body: itemBody,
-            query: req.query
-        };
-
-        // Add to the beginning of the array
-        receivedWebhooks.unshift(newWebhook);
-
-        // Broadcast the new webhook to all connected frontend clients
-        broadcastSseEvent('new_webhook', newWebhook);
-
-        console.log(`[${timestamp}] Received Webhook! ID: ${newWebhook.id}`);
-    });
+    // Add to the beginning of the array
+    receivedWebhooks.unshift(newWebhook);
 
     // Keep only the latest MAX_WEBHOOKS
     if (receivedWebhooks.length > MAX_WEBHOOKS) {
         receivedWebhooks = receivedWebhooks.slice(0, MAX_WEBHOOKS);
     }
 
-    res.status(200).json({ success: true, message: `Received ${items.length} label(s) successfully` });
+    // Broadcast the new webhook to all connected frontend clients
+    broadcastSseEvent('new_webhook', newWebhook);
+
+    console.log(`[${timestamp}] Received Webhook! ID: ${newWebhook.id}`);
+
+    res.status(200).json({ success: true, message: 'Webhook received successfully' });
 });
 
 // ------------------------------------------------------------------
