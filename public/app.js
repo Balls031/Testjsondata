@@ -168,24 +168,40 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `${firstLabel.store_name} :${firstLabel.store_port || ''}`
             : '-';
         
-        // Update the new Labels Count card
-        document.getElementById('card-count').textContent = labelsArray.length;
+        // Calculate the actual number of labels based on content
+        let actualLabelCount = 0;
+        labelsArray.forEach(lbl => {
+            let decodedZpl = '';
+            if (lbl.zpl_data) {
+                decodedZpl = decodeBase64(lbl.zpl_data);
+            } else if (lbl.rawZpl) {
+                decodedZpl = lbl.rawZpl;
+            }
+            
+            if (decodedZpl) {
+                const zplMatches = decodedZpl.match(/\^XA/gi);
+                const tsplMatches = decodedZpl.match(/SIZE /gi);
+                if (zplMatches) actualLabelCount += zplMatches.length;
+                else if (tsplMatches) actualLabelCount += tsplMatches.length;
+                else actualLabelCount += 1;
+            } else {
+                actualLabelCount += 1;
+            }
+        });
 
-        // Build a display copy of the payload without the huge base64 blob
-        const displayPayload = JSON.parse(JSON.stringify(selectedEvent));
-        
-        if (Array.isArray(displayPayload.body?.labels)) {
-            displayPayload.body.labels.forEach(l => {
-                if (l.zpl_data) l.zpl_data = `[Base64 — ${l.zpl_data.length} chars]`;
-            });
-        } else if (displayPayload.body?.zpl_data) {
-            displayPayload.body.zpl_data = `[Base64 — ${displayPayload.body.zpl_data.length} chars]`;
-        }
+        document.getElementById('card-count').textContent = actualLabelCount || labelsArray.length;
+
+        // Use the original payload so the user can see everything exactly as received
+        const displayPayload = selectedEvent;
 
         const fullJsonString = JSON.stringify(displayPayload, null, 2);
         jsonViewer.textContent = fullJsonString;
-        jsonViewer.removeAttribute('data-highlighted');
-        hljs.highlightElement(jsonViewer);
+        
+        // Disable syntax highlighting on extremely large payloads to prevent UI freezing
+        if (fullJsonString.length < 100000) {
+            jsonViewer.removeAttribute('data-highlighted');
+            hljs.highlightElement(jsonViewer);
+        }
 
         // Render dynamic ZPL blocks and Labelary previews
         const labelsContainer = document.getElementById('labels-container');
@@ -204,9 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!decodedZpl) return;
 
-            // Generate Labelary API URL
-            const labelaryUrl = `http://api.labelary.com/v1/printers/8dpmm/labels/4x2/0/${encodeURIComponent(decodedZpl)}`;
-
             const labelSection = document.createElement('div');
             labelSection.className = 'payload-section zpl-section';
             
@@ -216,13 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             labelSection.innerHTML = `
                 <div class="section-header">
-                    <h3>Label ${index + 1} Preview ${templateHtml}</h3>
-                </div>
-                
-                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-                    <div style="flex: 1; min-width: 300px; background: white; padding: 1rem; border-radius: 6px; box-shadow: inset 0 0 0 1px #e1e4e8; text-align: center;">
-                        <img src="${labelaryUrl}" alt="Labelary Preview" style="max-width: 100%; height: auto; border: 1px solid #ccc;" onerror="this.src=''; this.alt='Labelary preview failed to load (ZPL might be too large for GET request)'">
-                    </div>
+                    <h3>Label ${index + 1} Payload Decoded ${templateHtml}</h3>
                 </div>
 
                 <div class="code-container">
